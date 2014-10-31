@@ -6,15 +6,23 @@ import com.manoelcampos.bibtexpaperdownloader.repository.PaperRepositoryFactory;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.io.Reader;
+import java.io.UnsupportedEncodingException;
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 import org.jbibtex.BibTeXDatabase;
 import org.jbibtex.BibTeXEntry;
+import org.jbibtex.BibTeXFormatter;
 import org.jbibtex.BibTeXParser;
 import org.jbibtex.CharacterFilterReader;
 import org.jbibtex.Key;
+import org.jbibtex.LaTeXObject;
+import org.jbibtex.LaTeXParser;
+import org.jbibtex.LaTeXPrinter;
+import org.jbibtex.StringValue;
 import org.jbibtex.ParseException;
 import org.jbibtex.Value;
 
@@ -127,14 +135,35 @@ public class BibTex {
      * em um arquivo bibtex.
      * @param value Valor de uma entrada bibtex a ser convertido para string.
      * @return Retorna o valor da entrada como string
+     * @throws org.jbibtex.ParseException
+     * @throws java.io.UnsupportedEncodingException
      */
-    public String keyValueToStr(Value value) {
+    public String keyValueToStr(Value value) throws ParseException, UnsupportedEncodingException {
         if (value == null) {
             return "";
         }
-        return value.toUserString();
+        
+        //Convertendo uma string latex para uma string regular (sem caracteres especiais do latex)
+        String str = value.toUserString();
+        //str = StringEscapeUtils.unescapeHtml4(str);
+        //str = StringEscapeUtils.unescapeXml(str);
+        //str = new String(str.getBytes("ISO-8859-1"), "UTF-8");
+        if(str.indexOf('\\') > -1 || str.indexOf('{') > -1){
+            LaTeXParser latexParser = new LaTeXParser();
+            List<LaTeXObject> latexObjects = latexParser.parse(str);
+            LaTeXPrinter latexPrinter = new LaTeXPrinter();
+            str = latexPrinter.print(latexObjects);
+        }
+        
+        return str;
     }
     
+    /**
+     * Validates a file name, removing not allowed characters
+     * and returning a valid file name.
+     * @param fileName The file name to be validated.
+     * @return The valid file name.
+     */
     public String validateFileName(String fileName){
         return fileName.replaceAll("[^a-zA-Z0-9\\.\\-]", " ");
     }
@@ -160,9 +189,11 @@ public class BibTex {
         System.out.println("\nParse-----------------------");
         Collection<BibTeXEntry> entries = entryMap.values();
         int i = 0;
-        String paperTitle;
+        String paperTitle, fileName;
         String url;
         Key paperId;
+        String pdfFileFormat =
+                "%s%0"+String.valueOf(entries.size()).length()+"d-%s.pdf";
         for (BibTeXEntry entry : entries) {
             paperId = entry.getKey();
             paperTitle = this.keyValueToStr(entry.getField(BibTeXEntry.KEY_TITLE));
@@ -172,17 +203,52 @@ public class BibTex {
             System.out.println("\tDOI:   " + this.keyValueToStr(entry.getField(BibTeXEntry.KEY_DOI)));
             try {
                 url = repository.getPaperDownloadUrl(paperId.getValue(), paperTitle);
-                /*
-                TODO: adicionar o caminho de cada arquivo baixado na entrada 
-                do paper no arquivo bib, assim, ao importar o bib no mendeley
-                ou outra ferramenta, ela já vai importar automaticamente o PDF.
-                */
-                HttpUtils.downloadFile(url, downloadDir + i +"-" +validateFileName(paperTitle) + ".pdf");
+                if(url.equals("")){
+                    throw new PaperNotAvailableForDownloadException();
+                }
+                fileName = String.format(
+                    pdfFileFormat, downloadDir, i, validateFileName(paperTitle));
+                if(HttpUtils.downloadFile(url, fileName)){
+                    setFieldValue(entry, "file", fileName);
+                }
             } catch (PaperNotAvailableForDownloadException ex) {
                 System.out.println("Paper "+paperId +". "+ex.getLocalizedMessage());
             }
         }
+        System.out.println("Bibtex update with paper PDF path: " + bibFileName);
+        this.save(bibFileName);
     }
+    
+    /**
+     * Save the changes in the parsed bibtex to a file
+     * @param fileName The name of the file to be saved.
+     * @return Returns true if the file was successfully saved
+     * @throws java.io.FileNotFoundException 
+     * @throws java.io.IOException 
+     */
+    public boolean save(String fileName) throws FileNotFoundException, IOException{
+        try(FileWriter writer = new FileWriter(fileName)){
+          BibTeXFormatter bibtexFormatter = new org.jbibtex.BibTeXFormatter();
+          bibtexFormatter.format(database, writer);
+        }
+        return true;
+    }
+    
+    /**
+     * Set a value to a bibtex key into a specific bibtex entry.
+     * @param entry Bibtex entry to set a value for a specific key
+     * @param keyName Name of the key to be set
+     * @param valueStr Value to be set on the key
+     */
+    private void setFieldValue(BibTeXEntry entry, String keyName, String valueStr) {
+        Key key = new Key(keyName);
+        Value bibValue = entry.getField(key);
+        if(bibValue != null){
+            entry.removeField(key);
+        }
+        entry.addField(key, 
+                new StringValue(valueStr, StringValue.Style.BRACED));
+    }       
 
     /**
      * @return the repositoryName
