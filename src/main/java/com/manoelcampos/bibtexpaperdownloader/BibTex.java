@@ -10,8 +10,6 @@ import java.io.IOException;
 import java.io.Reader;
 import java.util.Collection;
 import java.util.Map;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import org.jbibtex.BibTeXDatabase;
 import org.jbibtex.BibTeXEntry;
 import org.jbibtex.BibTeXParser;
@@ -130,11 +128,15 @@ public class BibTex {
      * @param value Valor de uma entrada bibtex a ser convertido para string.
      * @return Retorna o valor da entrada como string
      */
-    String keyValueToStr(Value value) {
+    public String keyValueToStr(Value value) {
         if (value == null) {
             return "";
         }
         return value.toUserString();
+    }
+    
+    public String validateFileName(String fileName){
+        return fileName.replaceAll("[^a-zA-Z0-9\\.\\-]", " ");
     }
 
     /**
@@ -170,11 +172,15 @@ public class BibTex {
             System.out.println("\tDOI:   " + this.keyValueToStr(entry.getField(BibTeXEntry.KEY_DOI)));
             try {
                 url = repository.getPaperDownloadUrl(paperId.getValue(), paperTitle);
-                //HttpUtils.downloadFile(url, downloadDir + paperTitle + ".pdf");
+                /*
+                TODO: adicionar o caminho de cada arquivo baixado na entrada 
+                do paper no arquivo bib, assim, ao importar o bib no mendeley
+                ou outra ferramenta, ela já vai importar automaticamente o PDF.
+                */
+                HttpUtils.downloadFile(url, downloadDir + i +"-" +validateFileName(paperTitle) + ".pdf");
             } catch (PaperNotAvailableForDownloadException ex) {
                 System.out.println("Paper "+paperId +". "+ex.getLocalizedMessage());
             }
-            break;
         }
     }
 

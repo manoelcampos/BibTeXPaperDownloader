@@ -13,9 +13,15 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.io.StringWriter;
+import java.net.CookieHandler;
+import java.net.CookieManager;
+import java.net.CookiePolicy;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.net.URLConnection;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -24,13 +30,17 @@ import java.util.regex.Pattern;
  * @author manoelcampos
  */
 public class HttpUtils {
+    static {
+        CookieManager manager = new CookieManager();
+        manager.setCookiePolicy(CookiePolicy.ACCEPT_ALL);
+        CookieHandler.setDefault(manager);
+    }
+    
     private static BufferedReader sendRequest(URL url) throws IOException{
         URLConnection conn = url.openConnection();
         conn.addRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 5.1; rv:31.0) Gecko/20100101 Firefox/31.0");
         conn.addRequestProperty("Host", url.getHost());
         conn.connect();
-        
-        //BufferedReader bf = new BufferedReader(new InputStreamReader(url.openStream()));
         BufferedReader bf = new BufferedReader(new InputStreamReader(conn.getInputStream())); 
         return bf;
     }
@@ -72,7 +82,7 @@ public class HttpUtils {
         Pattern pattern = Pattern.compile(regex);
         Matcher matcher = pattern.matcher(html);
         if (matcher.find()) {
-            return matcher.group().split("=")[1];
+            return (matcher.groupCount()==0 ? matcher.group() : matcher.group(1));
         }
         return "";
     }

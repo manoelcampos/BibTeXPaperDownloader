@@ -32,7 +32,7 @@ public class Main {
     public static void main(String args[]) {
         String bibFileName = 
             getCommandLineParam(args, 0, 
-                "/Users/manoelcampos/Dropbox/UBI/tese/survey-vm-placement/search0-ieee.temp.bib");
+                "/Users/manoelcampos/Dropbox/UBI/tese/survey-vm-placement/search0-ieee.bib");
         String downloadDir = getCommandLineParam(args, 1, "/tmp/");
         String repositoryName = getCommandLineParam(args, 2, "IEEE");
         

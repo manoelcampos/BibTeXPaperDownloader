@@ -14,11 +14,15 @@ import java.io.IOException;
  * @author manoelcampos
  */
 public class IEEEPaperRepository implements PaperRepository {
+    /*
     public static final String PAPER_PAGE1 = "http://ieeexplore.ieee.org/xpl/articleDetails.jsp?arnumber=%s";
     public static final String PAPER_PAGE2 = "http://ieeexplore.ieee.org/xpls/icp.jsp?arnumber=%s";
     //"http://ieeexplore.ieee.org/ielx7/{punumber}/{isnumber}/{arnumber (8 digitos)}.pdf?tp=&arnumber=%s&isnumber=%s";
     public static final String DOWNLOAD_URL = "http://ieeexplore.ieee.org/ielx7/%s/%s/%s.pdf?tp=&arnumber=%s&isnumber=%s";
-
+    */
+    
+    public static final String PAPER_PAGE1 = "http://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=%s";
+    
     /**
      * Obtém a URL para download o paper, indicado pelo parâmetro paperId, da base do IEEE.
      *
@@ -35,13 +39,10 @@ public class IEEEPaperRepository implements PaperRepository {
     public String getPaperDownloadUrl(String paperId, String paperTitle) throws PaperNotAvailableForDownloadException, InvalidPaperIdException, IOException {
         String url;
         String html;
-        String punumber;
-        String isnumber;
-        String paperIdStr;
         url = String.format(IEEEPaperRepository.PAPER_PAGE1, paperId);
         try {
             html = HttpUtils.getWebPageContent(url);
-            System.out.println("IEEE PaperPage1: " + url);
+            //System.out.println("IEEE PaperPage1: " + url);
         } catch (IOException e) {
             throw new IOException("Não foi possível obter o conteúdo da página do paper no IEEE a partir da URL " + url, e);
         }
@@ -52,25 +53,12 @@ public class IEEEPaperRepository implements PaperRepository {
         if(!available){
             throw new PaperNotAvailableForDownloadException();
         }
-        punumber = HttpUtils.getInformationFromWebPageContent(html, "punumber=\\d+");
-        isnumber = HttpUtils.getInformationFromWebPageContent(html, "isnumber=\\d+");
-        if (punumber.isEmpty() || isnumber.isEmpty()) {
-            url = String.format(IEEEPaperRepository.PAPER_PAGE2, paperId);
-            System.out.println("IEEE PaperPage2: " + url);
-            html = HttpUtils.getWebPageContent(url);
-            punumber = (!punumber.isEmpty() ? punumber : HttpUtils.getInformationFromWebPageContent(html, "punumber=\\d+"));
-            isnumber = (!isnumber.isEmpty() ? punumber : HttpUtils.getInformationFromWebPageContent(html, "isnumber=\\d+"));
-        }
         
-        try {
-            paperIdStr = String.format("%08d", Integer.parseInt(paperId));
-        } catch (NumberFormatException e) {
-            throw new InvalidPaperIdException("O Id do paper " + paperTitle + " é inválido: " + paperId);
-        }
-        url = String.format(IEEEPaperRepository.DOWNLOAD_URL, 
-                punumber, isnumber, paperIdStr, paperId, isnumber);
-        System.out.println("IEEE Download URL: " + url);
-        System.out.println("IEEE isnumber: " + isnumber + " punumber: " + punumber);
+        String regex = 
+            "<frame src=\"(http:\\/\\/ieeexplore\\.ieee\\.org\\/.*\\.pdf.*arnumber=.*)\" frameborder=";
+        
+        url = HttpUtils.getInformationFromWebPageContent(html, regex);
+        //System.out.println("Download URL: " + url);
         return url;
     }
     
