@@ -20,6 +20,12 @@ import org.jbibtex.ParseException;
  * @author manoelcampos
  */
 public class Main {
+   public static void showUsage(){
+       System.out.println("Usage:");
+       System.out.println("\tapp bibFileName [paperOutputDir] [database]");
+       System.out.println("The default value for paperOutputDir is /tmp");
+       System.out.println("Database can be: IEEE (default value)");
+   }
    /**
      * Executa a aplicação para processar o arquivo bib e baixar os papers.
      * @param args Recebe como parâmetros de linha de comando:
@@ -31,20 +37,25 @@ public class Main {
      */
     public static void main(String args[]) {
         String bibFileName = 
-            getCommandLineParam(args, 0, 
-                "/Users/manoelcampos/Dropbox/UBI/tese/survey-vm-placement/search0-ieee.bib");
+            getCommandLineParam(args, 0, "");
         String downloadDir = getCommandLineParam(args, 1, "/tmp/");
         String repositoryName = getCommandLineParam(args, 2, "IEEE");
         
+        if(bibFileName == null || bibFileName.trim().isEmpty()) {
+            showUsage();
+            return;
+        }
+        
         try {
             BibTex bibtex = new BibTex(bibFileName, repositoryName);
-            bibtex.processBibFile(downloadDir);
+            bibtex.setDownloadDir(downloadDir);
+            bibtex.downloadListOfPapers();
         } catch (FileNotFoundException ex) {
             System.err.printf("Arquivo bib %s não encontrado\n", bibFileName);
         } catch (ParseException ex) {
             System.err.printf("Não foi possível fazer o parse do arquivo bib %s. Provavelmente o arquivo é inválido\n", bibFileName);
         } catch (InvalidPaperIdException | IOException | ClassNotFoundException | InstantiationException ex) {
-            System.err.println(ex);
+            System.err.println(ex.getMessage());
         }
         //Logger.getLogger(Downloader.class.getName()).log(Level.SEVERE, null, ex);
     }    

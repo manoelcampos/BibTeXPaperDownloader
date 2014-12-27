@@ -36,18 +36,22 @@ public class BibTex {
     private BibTeXDatabase database;
     private String repositoryName;
     private String bibFileName;
+    private String downloadDir;
+    private PaperRepository repository;
         
     /**
      * Instancia um objeto para fazer o parse de um arquivo bibtex
      * e já tenta realizar o parse dele.
      * @param bibFileName Nome do arquivo bibtex a ser feito o parse.
-     * @param repositoryName Nome do repositório de onde os papers do bibtex serão baixados.
+     * @param repositoryName
      * @throws java.io.FileNotFoundException
      * @throws org.jbibtex.ParseException
      * @see com.manoelcampos.bibtexpaperdownloader.repository.PaperRepositoryFactory
      */
-    public BibTex(String bibFileName, String repositoryName) throws FileNotFoundException, ParseException {
+    public BibTex(String bibFileName, String repositoryName) throws FileNotFoundException, ParseException, ClassNotFoundException, InstantiationException {
         this.repositoryName = repositoryName;
+        repository = PaperRepositoryFactory.getInstance(repositoryName);
+        
         this.bibFileName = bibFileName;
         try{
             reader = new FileReader(bibFileName);
@@ -172,7 +176,6 @@ public class BibTex {
      * Processa um determinado arquivo bibtex, baixando
      * os papers especificados nele direto da sua base de dados online.
      *
-     * @param downloadDir Diretório de destino para baixar os papers.
      * @throws IOException Exceção lançada se não for possível salvar o paper baixado
      * (devido a um caminho inválido ou falta de acesso de escrita).
      * @throws ParseException Exceção lançcada se houver algum erro no arquivo bib
@@ -180,63 +183,87 @@ public class BibTex {
      * @throws InvalidPaperIdException Se o id de um paper a ser baixado é inválido.
      * Por exemplo, papers do IEEE tem id's inteiros.
      */
-    public void processBibFile(String downloadDir) throws IOException, ParseException, InvalidPaperIdException, ClassNotFoundException, InstantiationException {
-        PaperRepository repository = PaperRepositoryFactory.getInstance(getRepositoryName());
-        if (!downloadDir.equals("") && downloadDir.charAt(downloadDir.length() - 1) != File.separatorChar) {
-            downloadDir += File.separatorChar;
-        }
-        Map<Key, BibTeXEntry> entryMap = this.getDatabase().getEntries();
+    public void downloadListOfPapers() throws IOException, ParseException, InvalidPaperIdException {
         System.out.println("\nParse-----------------------");
-        Collection<BibTeXEntry> entries = entryMap.values();
         int i = 0;
-        String paperTitle, fileName;
-        String url;
-        Key paperId;
-        String pdfFileFormat =
-                "%s%0"+String.valueOf(entries.size()).length()+"d-%s.pdf";
-        for (BibTeXEntry entry : entries) {
-            paperId = entry.getKey();
-            paperTitle = this.keyValueToStr(entry.getField(BibTeXEntry.KEY_TITLE));
-            System.out.printf("%d - PaperID: %s\n", ++i, paperId);
-            System.out.println("\tTitle: " + paperTitle);
-            System.out.print("\tYear:  " + this.keyValueToStr(entry.getField(BibTeXEntry.KEY_YEAR)));
-            System.out.println("\tDOI:   " + this.keyValueToStr(entry.getField(BibTeXEntry.KEY_DOI)));
-            try {
-                url = repository.getPaperDownloadUrl(paperId.getValue(), paperTitle);
-                if(url.equals("")){
-                    throw new PaperNotAvailableForDownloadException();
-                }
-                fileName = String.format(
-                    pdfFileFormat, downloadDir, i, validateFileName(paperTitle));
-                if(HttpUtils.downloadFile(url, fileName)){
-                    setFieldValue(entry, "file", fileName);
-                }
-            } catch (PaperNotAvailableForDownloadException ex) {
-                System.out.println("Paper "+paperId +". "+ex.getLocalizedMessage());
-            }
+        for (BibTeXEntry bibEntry : getEntriesCollection()) {
+            i++;
+            downloadPaper(bibEntry, i);
         }
-        System.out.println("Bibtex update with paper PDF path: " + bibFileName);
-        this.save(bibFileName);
+        this.save();
+    }
+
+
+    private void downloadPaper(BibTeXEntry bibEntry, int i) throws ParseException, InvalidPaperIdException, IOException {
+        Paper paper;
+        String pdfFileFormat = generatePdfFileNameFormat();
+        try {
+            paper = repository.getPaperInstance(bibEntry);
+            printPaperInformation(i, paper);
+            String localPdfFileName = downloadPaperPdf(pdfFileFormat, i, paper);
+            if(localPdfFileName!=null)
+                setFieldValue(bibEntry, "file", localPdfFileName);
+        } catch (PaperNotAvailableForDownloadException ex) {
+            System.out.println("Paper "+bibEntry.getKey() +". "+ex.getLocalizedMessage());
+        }
+    }
+
+    private String downloadPaperPdf(String pdfFileFormat, int i, Paper paper) throws PaperNotAvailableForDownloadException, IOException {
+        String fileName = generatePaperPdfLocalFileName(pdfFileFormat, i, paper.getTitle());
+        if(HttpUtils.downloadFile(paper.getPaperPdfUrl(), fileName))
+            return fileName;
+        return null;
+    }
+
+    private String generatePaperPdfLocalFileName(String pdfFileFormat, int i, String paperTitle) {
+        String fileName;
+        fileName = String.format(
+                pdfFileFormat, downloadDir, i, validateFileName(paperTitle));
+        return fileName;
+    }
+
+    private void printPaperInformation(int i, Paper paper) throws UnsupportedEncodingException, ParseException {
+        System.out.printf("%d - PaperID: %s\n", i, paper.getId());
+        System.out.println("\tTitle: " + paper.getTitle());
+        System.out.print("\tYear:  " + paper.getYear());
+        System.out.println("\tDOI:   " + paper.getDoi());
+    }
+
+    private String generatePdfFileNameFormat() {
+        return "%s%0"+String.valueOf(getEntriesCollection().size()).length()+"d-%s.pdf";
+    }
+
+    private Collection<BibTeXEntry> getEntriesCollection() {
+        Collection<BibTeXEntry> entries = database.getEntries().values();
+        return entries;
+    }
+
+    private String insertTrailBackslach(String directory) {
+        if (directory != null && !directory.equals("") && directory.charAt(directory.length() - 1) != File.separatorChar) {
+            directory += File.separatorChar;
+        }
+        return directory;
     }
     
     /**
      * Save the changes in the parsed bibtex to a file
-     * @param fileName The name of the file to be saved.
      * @return Returns true if the file was successfully saved
      * @throws java.io.FileNotFoundException 
      * @throws java.io.IOException 
      */
-    public boolean save(String fileName) throws FileNotFoundException, IOException{
-        try(FileWriter writer = new FileWriter(fileName)){
+    public boolean save() throws FileNotFoundException, IOException{
+        try(FileWriter writer = new FileWriter(bibFileName)){
           BibTeXFormatter bibtexFormatter = new org.jbibtex.BibTeXFormatter();
           bibtexFormatter.format(database, writer);
         }
+        System.out.println("Bibtex updated to include paper's PDF paths: " + bibFileName);
+        
         return true;
     }
     
     /**
-     * Set a value to a bibtex key into a specific bibtex entry.
-     * @param entry Bibtex entry to set a value for a specific key
+     * Set a value to a bibtex key into a specific bibtex bibEntry.
+     * @param entry Bibtex bibEntry to set a value for a specific key
      * @param keyName Name of the key to be set
      * @param valueStr Value to be set on the key
      */
@@ -257,12 +284,6 @@ public class BibTex {
         return repositoryName;
     }
 
-    /**
-     * @param repositoryName the repositoryName to set
-     */
-    public void setRepositoryName(String repositoryName) {
-        this.repositoryName = repositoryName;
-    }
 
     /**
      * @return the bibFileName
@@ -276,5 +297,19 @@ public class BibTex {
      */
     public void setBibFileName(String bibFileName) {
         this.bibFileName = bibFileName;
+    }
+
+    /**
+     * @return the downloadDir
+     */
+    public String getDownloadDir() {
+        return downloadDir;
+    }
+
+    /**
+     * @param downloadDir the downloadDir to set
+     */
+    public void setDownloadDir(String downloadDir) {
+        this.downloadDir = insertTrailBackslach(downloadDir);
     }
 }
