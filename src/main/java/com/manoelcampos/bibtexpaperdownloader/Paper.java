@@ -8,6 +8,7 @@ package com.manoelcampos.bibtexpaperdownloader;
 import com.manoelcampos.bibtexpaperdownloader.repository.PaperNotAvailableForDownloadException;
 import com.manoelcampos.bibtexpaperdownloader.repository.PaperRepository;
 import java.io.IOException;
+import org.apache.commons.lang.StringUtils;
 
 /**
  *
@@ -110,7 +111,7 @@ public class Paper {
      * @throws IOException 
      */
     public boolean isPaperAccessAllowed() throws IOException {
-        return "".equals(HttpUtils.getInformationFromWebPageContent(getPaperPageHtml(), getRegexToIdentifyUnallowedPaperAccess()));
+        return StringUtils.isBlank(HttpUtils.getInformationFromWebPageContent(getPaperPageHtml(), getRegexToIdentifyUnallowedPaperAccess()));
     }
 
     /**
@@ -129,7 +130,7 @@ public class Paper {
         
         try{
             String url = getPaperPdfUrlInternal();
-            if("".equals(url))
+            if(StringUtils.isBlank(url))
                 throw new PaperNotAvailableForDownloadException(); 
             return url;
         } catch(IOException e){

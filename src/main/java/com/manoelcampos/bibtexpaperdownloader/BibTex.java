@@ -13,6 +13,7 @@ import java.io.UnsupportedEncodingException;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import org.apache.commons.lang.StringUtils;
 import org.jbibtex.BibTeXDatabase;
 import org.jbibtex.BibTeXEntry;
 import org.jbibtex.BibTeXFormatter;
@@ -46,28 +47,37 @@ public class BibTex {
      * @param repositoryName
      * @throws java.io.FileNotFoundException
      * @throws org.jbibtex.ParseException
+     * @throws java.lang.ClassNotFoundException
+     * @throws java.lang.InstantiationException
      * @see com.manoelcampos.bibtexpaperdownloader.repository.PaperRepositoryFactory
      */
     public BibTex(String bibFileName, String repositoryName) throws FileNotFoundException, ParseException, ClassNotFoundException, InstantiationException {
-        this.repositoryName = repositoryName;
-        repository = PaperRepositoryFactory.getInstance(repositoryName);
-        
-        this.bibFileName = bibFileName;
-        try{
-            reader = new FileReader(bibFileName);
-        } catch(FileNotFoundException e){
-            throw new FileNotFoundException("Arquivo bibtex " + bibFileName + " não encontrado.");
-        }
-        
-        try(CharacterFilterReader filterReader = new CharacterFilterReader(reader)){
+        setRepositoryNameAndCreateRepository(repositoryName);
+        setBibFileNameAndCreateBibFileReader(bibFileName);        
+        createBibTexParserAndParsesIt(bibFileName);
+    }
+
+    private void createBibTexParserAndParsesIt(String bibFileName1) throws ParseException {
+        try (final CharacterFilterReader filterReader = new CharacterFilterReader(reader)) {
             parser = this.createBibTexParser();
             database = parser.parse(filterReader);
-        } catch(Exception e){
-            throw new ParseException(
-                 "Não foi possível fazer o parse do arquivo bib "+bibFileName+
-                 ". Provavelmente o arquivo é inválido\n");        
+        } catch (Exception e) {
+            throw new ParseException("It was not possible to pase the bibtex file " + bibFileName1 + ". Maybe the file is invalid\n");        
         }
-    
+    }
+
+    private void setBibFileNameAndCreateBibFileReader(String bibFileName1) throws FileNotFoundException {
+        this.bibFileName = bibFileName1;
+        try {
+            reader = new FileReader(bibFileName1);
+        } catch (FileNotFoundException e) {
+            throw new FileNotFoundException("Bibtex file " + bibFileName1 + " not found.");
+        }
+    }
+
+    private void setRepositoryNameAndCreateRepository(String repositoryName1) throws InstantiationException, ClassNotFoundException {
+        this.repositoryName = repositoryName1;
+        repository = PaperRepositoryFactory.getInstance(repositoryName1);
     }
 
     /**
@@ -143,12 +153,9 @@ public class BibTex {
      * @throws java.io.UnsupportedEncodingException
      */
     public String keyValueToStr(Value value) throws ParseException, UnsupportedEncodingException {
-        if (value == null) {
-            return "";
-        }
-        
         //Convertendo uma string latex para uma string regular (sem caracteres especiais do latex)
-        String str = value.toUserString();
+        String str = (value == null ? "" : value.toUserString());
+        
         //str = StringEscapeUtils.unescapeHtml4(str);
         //str = StringEscapeUtils.unescapeXml(str);
         //str = new String(str.getBytes("ISO-8859-1"), "UTF-8");
@@ -187,8 +194,7 @@ public class BibTex {
         System.out.println("\nParse-----------------------");
         int i = 0;
         for (BibTeXEntry bibEntry : getEntriesCollection()) {
-            i++;
-            downloadPaper(bibEntry, i);
+            downloadPaper(bibEntry, ++i);
         }
         this.save();
     }
@@ -201,7 +207,7 @@ public class BibTex {
             paper = repository.getPaperInstance(bibEntry);
             printPaperInformation(i, paper);
             String localPdfFileName = downloadPaperPdf(pdfFileFormat, i, paper);
-            if(localPdfFileName!=null)
+            if(StringUtils.isNotBlank(localPdfFileName))
                 setFieldValue(bibEntry, "file", localPdfFileName);
         } catch (PaperNotAvailableForDownloadException ex) {
             System.out.println("Paper "+bibEntry.getKey() +". "+ex.getLocalizedMessage());
@@ -212,7 +218,7 @@ public class BibTex {
         String fileName = generatePaperPdfLocalFileName(pdfFileFormat, i, paper.getTitle());
         if(HttpUtils.downloadFile(paper.getPaperPdfUrl(), fileName))
             return fileName;
-        return null;
+        return "";
     }
 
     private String generatePaperPdfLocalFileName(String pdfFileFormat, int i, String paperTitle) {
@@ -234,12 +240,11 @@ public class BibTex {
     }
 
     private Collection<BibTeXEntry> getEntriesCollection() {
-        Collection<BibTeXEntry> entries = database.getEntries().values();
-        return entries;
+        return database.getEntries().values();
     }
 
     private String insertTrailBackslach(String directory) {
-        if (directory != null && !directory.equals("") && directory.charAt(directory.length() - 1) != File.separatorChar) {
+        if (StringUtils.isNotBlank(directory) && directory.endsWith(File.separator)) {
             directory += File.separatorChar;
         }
         return directory;
@@ -273,8 +278,7 @@ public class BibTex {
         if(bibValue != null){
             entry.removeField(key);
         }
-        entry.addField(key, 
-                new StringValue(valueStr, StringValue.Style.BRACED));
+        entry.addField(key, new StringValue(valueStr, StringValue.Style.BRACED));
     }       
 
     /**

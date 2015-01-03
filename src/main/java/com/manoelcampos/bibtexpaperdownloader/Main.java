@@ -2,11 +2,13 @@ package com.manoelcampos.bibtexpaperdownloader;
 
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import org.jbibtex.ParseException;
 
 /**
- * Aplicação de linha de comando para fazer o parse de arquivos bibtex (*.bib)
- * e baixar os papers definidos nele direto de suas respectivas bases de dados online.
+ * Aplicação de linha de comando para fazer o downloadPapersInBibFile de arquivos bibtex (*.bib)
+ e baixar os papers definidos nele direto de suas respectivas bases de dados online.
  * Atualmente só é possível baixar papers da base do IEEE
  * e mesmo assim, alguns papers não conseguem ser baixados.
  * 
@@ -20,12 +22,22 @@ import org.jbibtex.ParseException;
  * @author manoelcampos
  */
 public class Main {
+   private String bibFileName;
+   private String downloadDir;
+   private String repositoryName = "IEEE";
+    
    public static void showUsage(){
        System.out.println("Usage:");
        System.out.println("\tapp bibFileName [paperOutputDir] [database]");
        System.out.println("The default value for paperOutputDir is /tmp");
        System.out.println("Database can be: IEEE (default value)");
    }
+   
+   public Main(String args[]) throws ParseException, ClassNotFoundException, InstantiationException, IOException, FileNotFoundException, InvalidPaperIdException {
+        getComandLineParameters(args);
+        downloadPapersInBibFile();   
+   }
+   
    /**
      * Executa a aplicação para processar o arquivo bib e baixar os papers.
      * @param args Recebe como parâmetros de linha de comando:
@@ -36,29 +48,29 @@ public class Main {
      *   (se omitido assume que a base é IEEE).
      */
     public static void main(String args[]) {
-        String bibFileName = 
-            getCommandLineParam(args, 0, "");
-        String downloadDir = getCommandLineParam(args, 1, "/tmp/");
-        String repositoryName = getCommandLineParam(args, 2, "IEEE");
-        
-        if(bibFileName == null || bibFileName.trim().isEmpty()) {
-            showUsage();
-            return;
-        }
-        
         try {
-            BibTex bibtex = new BibTex(bibFileName, repositoryName);
-            bibtex.setDownloadDir(downloadDir);
-            bibtex.downloadListOfPapers();
-        } catch (FileNotFoundException ex) {
-            System.err.printf("Arquivo bib %s não encontrado\n", bibFileName);
-        } catch (ParseException ex) {
-            System.err.printf("Não foi possível fazer o parse do arquivo bib %s. Provavelmente o arquivo é inválido\n", bibFileName);
-        } catch (InvalidPaperIdException | IOException | ClassNotFoundException | InstantiationException ex) {
+            new Main(args);
+        }catch(IllegalArgumentException e){
+            showUsage();
+        } catch (ParseException|InvalidPaperIdException|IOException|ClassNotFoundException|InstantiationException ex) {
             System.err.println(ex.getMessage());
-        }
-        //Logger.getLogger(Downloader.class.getName()).log(Level.SEVERE, null, ex);
+            Logger.getLogger(Main.class.getName()).log(Level.SEVERE, null, ex);
+        }    
     }    
+
+    private void downloadPapersInBibFile() throws FileNotFoundException, ParseException, ClassNotFoundException, InstantiationException, IOException, InvalidPaperIdException {
+        BibTex bibtex = new BibTex(bibFileName, repositoryName);
+        bibtex.setDownloadDir(downloadDir);
+        bibtex.downloadListOfPapers();
+    }
+
+    private void getComandLineParameters(String[] args) throws IllegalArgumentException {
+        bibFileName = getCommandLineParam(args, 0, "");
+        downloadDir = getCommandLineParam(args, 1, "/tmp/");
+        repositoryName = getCommandLineParam(args, 2, repositoryName);
+        if("".equals(bibFileName))
+            throw new IllegalArgumentException("BibTex file name is a required command line parameter.");
+    }
     
    /**
      * Obtém um parâmetro de uma posição especificada
@@ -71,10 +83,10 @@ public class Main {
      * @return Retorna o valor do parâmetro da posição i, caso exista.
      * Caso contrário, retorna o valor do parâmetro defaultValue.
      */
-    public static String getCommandLineParam(String args[], int i, String defaultValue){
+    private String getCommandLineParam(String args[], int i, String defaultValue){
         if(args.length > i){
-            return args[i];
+            return args[i].trim();
         }
-        return defaultValue;
+        return (defaultValue != null ? defaultValue : "");
     }    
 }
