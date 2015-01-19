@@ -5,9 +5,8 @@
  */
 package com.manoelcampos.bibtexpaperdownloader.repository;
 
-import com.manoelcampos.bibtexpaperdownloader.InvalidPaperIdException;
+import com.manoelcampos.bibtexpaperdownloader.BibTex;
 import com.manoelcampos.bibtexpaperdownloader.Paper;
-import java.io.IOException;
 import org.jbibtex.BibTeXEntry;
 
 /**
@@ -15,5 +14,6 @@ import org.jbibtex.BibTeXEntry;
  * @author manoelcampos
  */
 public interface PaperRepository {
-    Paper getPaperInstance(BibTeXEntry bibEntry) throws PaperNotAvailableForDownloadException, InvalidPaperIdException, IOException;
+    Paper getPaperInstance(BibTex bibtex, BibTeXEntry bibEntry);
+    String getName();
 }

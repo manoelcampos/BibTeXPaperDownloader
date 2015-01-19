@@ -5,9 +5,8 @@
  */
 package com.manoelcampos.bibtexpaperdownloader.repository;
 
-import com.manoelcampos.bibtexpaperdownloader.InvalidPaperIdException;
+import com.manoelcampos.bibtexpaperdownloader.BibTex;
 import com.manoelcampos.bibtexpaperdownloader.Paper;
-import java.io.IOException;
 import org.jbibtex.BibTeXEntry;
 
 /**
@@ -15,6 +14,7 @@ import org.jbibtex.BibTeXEntry;
  * @author manoelcampos
  */
 public class IEEEPaperRepository implements PaperRepository {
+    private final String name;
     /*
     public static final String PAPER_PAGE_URL_TEMPLATE = "http://ieeexplore.ieee.org/xpl/articleDetails.jsp?arnumber=%s";
     public static final String PAPER_PAGE2 = "http://ieeexplore.ieee.org/xpls/icp.jsp?arnumber=%s";
@@ -24,23 +24,16 @@ public class IEEEPaperRepository implements PaperRepository {
     
     public static final String PAPER_PAGE_URL_TEMPLATE = "http://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=%s";
     
-    /**
-     * Obtém a URL para download o paper, indicado pelo parâmetro paperId, da base do IEEE.
-     *
-     * @param bibEntry
-     * @return Retorna a URL para download do paper indicado.
-     * @throws IOException Exceção lançada se não for possível obter o conteúdo da página
-     * Web do paper.
-     * @throws InvalidPaperIdException Se o id de um paper a ser baixado é inválido.
-     * Por exemplo, papers do IEEE tem id's inteiros.
-     * @throws PaperNotAvailableForDownloadException
-     */
+    public IEEEPaperRepository(){
+        this.name = "IEEE";
+    }
+    
     @Override
-    public Paper getPaperInstance(BibTeXEntry bibEntry) throws PaperNotAvailableForDownloadException, InvalidPaperIdException, IOException {
-        Paper paper = new Paper(this);
+    public Paper getPaperInstance(BibTex bibtex, BibTeXEntry bibEntry) {
+        Paper paper = new Paper(bibtex, bibEntry);
         paper.setId(bibEntry.getKey().toString());
+        paper.setPaperWebPageUrl(generatePaperUrlFromPaperId(paper.getId()));        
         paper.setTitle(bibEntry.getField(BibTeXEntry.KEY_TITLE).toString());
-        paper.setPaperPageUrl(generatePaperUrlFromPaperId(paper.getId()));
         paper.setRegexToIdentifyUnallowedPaperAccess(generateRegexToIdentifyUnallowedPaperAccess());
         paper.setRegexToGetPdfUrlFromPaperWebPage(generateRegexToGetPdfUrlFromPaperWebPage());
         return paper;
@@ -57,6 +50,11 @@ public class IEEEPaperRepository implements PaperRepository {
     private String generateRegexToGetPdfUrlFromPaperWebPage() {
         return
             "<frame src=\"(http:\\/\\/ieeexplore\\.ieee\\.org\\/.*\\.pdf.*arnumber=.*)\" frameborder=";
+    }
+
+    @Override
+    public String getName() {
+        return name;
     }
     
 }

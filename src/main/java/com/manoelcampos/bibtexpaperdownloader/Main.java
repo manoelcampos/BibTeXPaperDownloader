@@ -61,7 +61,7 @@ public class Main {
     private void downloadPapersInBibFile() throws FileNotFoundException, ParseException, ClassNotFoundException, InstantiationException, IOException, InvalidPaperIdException {
         BibTex bibtex = new BibTex(bibFileName, repositoryName);
         bibtex.setDownloadDir(downloadDir);
-        bibtex.downloadListOfPapers();
+        bibtex.downloadAllPapers();
     }
 
     private void getComandLineParameters(String[] args) throws IllegalArgumentException {
