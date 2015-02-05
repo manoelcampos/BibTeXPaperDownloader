@@ -1,4 +1,3 @@
-### Status
 [![Build Status](https://travis-ci.org/manoelcampos/BibTeXPaperDownloader.png)](https://travis-ci.org/manoelcampos/BibTeXPaperDownloader)
 # BibTeX Paper Downloader
 Automates the download of papers from scientific repositories such as IEEE, ACM, Elsevier, Science Direct, etc.
