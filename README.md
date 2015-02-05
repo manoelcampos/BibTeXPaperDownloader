@@ -40,4 +40,4 @@ The intent of my application is not (and never will be) to contour the paper's a
 It only automates the download of papers that you already have access, by using your university network or your personal account and subscriptions in the paper repositories.
 All URL's used to get access to the papers are publicly available for any user.
 
-The application is provide as is without any warranty. The author is not liable for any misuse, damages or losses caused by the application.
+The application is provided as is without any warranty. The author is not liable for any misuse, damages or losses caused by the application.
