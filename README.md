@@ -37,7 +37,8 @@ java -jar BibTexPaperDownloader-1.0-SNAPSHOT-jar-with-dependencies.jar
 
 #Disclaimer
 The intent of my application is not (and never will be) to contour the paper's access lock imposed by the repositories.
-It only automates the download of papers that you already have access, by using your university network or your personal account and subscriptions in the paper repositories.
-All URL's used to get access to the papers are publicly available for any user.
+It only automates the download of papers that you already have access, by using your university network or your personal account and subscriptions in the paper repositories. All the papers in these repositories are commonly copyrighted. 
+IF YOU DON'T ALREADY HAVE ACCESS TO THE PAPERS, THIS APPLICATION WILL BE USELESS TO YOU.
+IT IS NOT INTENDED TO BYPASS THE PAPERS ACCESS CONTROL.
 
 The application is provided as is without any warranty. The author is not liable for any misuse, damages or losses caused by the application.
