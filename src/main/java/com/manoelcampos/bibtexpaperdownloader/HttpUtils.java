@@ -1,8 +1,3 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
 package com.manoelcampos.bibtexpaperdownloader;
 
 import java.io.BufferedInputStream;
@@ -23,8 +18,8 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Classe com métodos para facilitar o uso do protocolo HTTP.
- * @author manoelcampos
+ * 
+ * @author Manoel Campos da Silva Filho <manoelcampos at gmail dot com>
  */
 public class HttpUtils {
     static {
@@ -43,15 +38,14 @@ public class HttpUtils {
     }
 
     /**
-     * Obtém o código HTML da página da URL especificada.
      *
-     * @param urlStr URL da página que deve-se obter o código HTML.
-     * @return Retorna o código HTML da página especificada.
-     * @throws java.net.MalformedURLException Exceção lançada quando a URL indicada é inválida.
+     * @param url The page url
+     * @return The HTMl code of the page 
+     * @throws java.net.MalformedURLException Thrown when the URL is invalid
      */
-    public static String getWebPageContent(String urlStr) throws MalformedURLException, IOException {
+    public static String getWebPageHtmlContent(String url) throws MalformedURLException, IOException {
         String line;
-        try (final BufferedReader is = sendRequest(new URL(urlStr))) {
+        try (final BufferedReader is = sendRequest(new URL(url))) {
             try (final StringWriter os = new StringWriter()) {
                 while ((line = is.readLine()) != null) {
                     os.append(line);
@@ -59,21 +53,20 @@ public class HttpUtils {
                 return os.toString();
             }
         } catch (MalformedURLException e) {
-            throw new MalformedURLException("URL inválida: " + urlStr);
+            throw new MalformedURLException("Invalid URL " + url);
         } catch (IOException e) {
-            throw new IOException("Erro ao tentar gravar buffer para armazenamento do conteúdo da página indicada pela URL " + urlStr, e);
+            throw new IOException("Error trying to write in the local buffer to store the page HTML from " + url, e);
         }
     }
 
     /**
-     * Obtém uma determinada informação
-     * a partir do código HTML de uma página Web.
+     * Using a specified regex expression, 
+     * gets a specific information from an HTML code.
      *
-     * @param html Código HTML da página a ser processada.
-     * @param regex Expressão regular indicando a informação que deve ser obtida da página.
-     * @return Retorna a informação obtida da página, a partir da aplicação da regex
-     * no código HTML da mesma. Caso a informação não seja localizada,
-     * retorna uma string vazia.
+     * @param html HTML code to be parsed.
+     * @param regex Regular expression to get the desired information from the HTML code.
+     * @return The information extracted from applying the regex to the HTML code.
+     * Returns a empty string if the information is not found.
      */
     public static String getInformationFromWebPageContent(String html, String regex) {
         Pattern pattern = Pattern.compile(regex);
@@ -85,14 +78,12 @@ public class HttpUtils {
     }
 
     /**
-     * Baixar o arquivo da URL especificada e salva com o nome
-     * fornecido em fileName.
+     * Downloads the file specified by the URL.
      *
-     * @param url URL da página que deve-se obter o código HTML.
-     * @param fileName Nome para salvar o arquivo.
-     * @return Retorna true se o arquivo foi baixado com sucesso e false em
-     * caso contrário.
-     * @throws java.net.MalformedURLException Exceção lançada quando a URL indicada é inválida.
+     * @param url The URL of the remote file.
+     * @param fileName Name to save the download file locally.
+     * @return True if the file was downloaded and false otherwise.
+     * @throws java.net.MalformedURLException Thrown when the informed URL is invalid.
      */
     public static boolean downloadFile(String url, String fileName) throws MalformedURLException, IOException {
         URL u = new URL(url);
@@ -105,9 +96,9 @@ public class HttpUtils {
                 }
             }
         } catch (MalformedURLException e) {
-            throw new MalformedURLException("URL inválida: " + url);
+            throw new MalformedURLException("Invalid URL " + url);
         } catch (IOException e) {
-            throw new IOException("Erro ao tentar acessar o arquivo " + fileName, e);
+            throw new IOException("Error trying to access the file " + fileName, e);
         }
         return true;
     }

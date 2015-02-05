@@ -7,30 +7,30 @@ import java.util.logging.Logger;
 import org.jbibtex.ParseException;
 
 /**
- * Aplicação de linha de comando para fazer o downloadPapersInBibFile de arquivos bibtex (*.bib)
- e baixar os papers definidos nele direto de suas respectivas bases de dados online.
- * Atualmente só é possível baixar papers da base do IEEE
- * e mesmo assim, alguns papers não conseguem ser baixados.
+ * Command line application to automate the download of papers, specified
+ * into a bibtex file, from a given paper web repository
+ * such as IEEE, ACM, Elsevier, etc.
  * 
- * A aplicação só funciona se o usuário já tiver livre acesso
- * aos papers nas suas respectivas bases de dados.
- * Logo, não é objetivo da mesma burlar qualquer mecanismo de proteção
- * dos direitos autorais. Desta a forma, a aplicação não tenta driblar
- * qualquer mecanismo de proteção do acesso aos papers,
- * ela simplesmente automatiza o processo de download dos mesmos.
- * 
- * @author manoelcampos
+ * @author Manoel Campos da Silva Filho <manoelcampos at gmail dot com>
  */
 public class Main {
+   public static final String DEFAULT_DOWNLOAD_DIR = "/tmp/";
+   public static final String DEFAULT_REPOSITORY = "IEEE";
+
    private String bibFileName;
    private String downloadDir;
-   private String repositoryName = "IEEE";
+   private String repositoryName = DEFAULT_REPOSITORY;
     
    public static void showUsage(){
        System.out.println("Usage:");
-       System.out.println("\tapp bibFileName [paperOutputDir] [database]");
-       System.out.println("The default value for paperOutputDir is /tmp");
-       System.out.println("Database can be: IEEE (default value)");
+       System.out.println("\tjava -jar app_jar_file.jar BibTeXFileName [PapersDownloadDir] [RepositoryName]");
+       System.out.println("\t\t- BibTeXFileName is the path of a BibTeX file "
+            + "containing the papers to be downloaded from a specified respository");
+       System.out.println("\t\t- PapersDownloadDir is the directory where to "
+            + "download the papers (default value is "+DEFAULT_DOWNLOAD_DIR+")");
+       System.out.println(
+            "\t\t- RepositoryName is the name of the repository that hosts the papers to "
+            + "be downloaded. Currently, only "+DEFAULT_REPOSITORY+" (the default value");
    }
    
    public Main(String args[]) throws ParseException, ClassNotFoundException, InstantiationException, IOException, FileNotFoundException, InvalidPaperIdException {
@@ -39,13 +39,14 @@ public class Main {
    }
    
    /**
-     * Executa a aplicação para processar o arquivo bib e baixar os papers.
-     * @param args Recebe como parâmetros de linha de comando:
-     *   0 - Nome do arquivo bib a ser processado.
-     *   1 - Diretório de destino para baixar os papers.
-     *   Se omitido assume que deve-se baixar no diretório atual.
-     *   2 - Nome da base de dados que contém os papers indicados no arquivo bib 
-     *   (se omitido assume que a base é IEEE).
+     * Executes the command line application to parse the bibtex file
+     * and download the papers.
+     * 
+     * @param args The command line arguments, in order:<br/>
+     *   1º - Name of the bibtex file to be processed.<br/>
+     *   2º - Destination directory where to download the papers.<br/>
+     *   3º - Name of the repository where to download the papers.
+     * @see Main#showUsage() 
      */
     public static void main(String args[]) {
         try {
@@ -59,29 +60,29 @@ public class Main {
     }    
 
     private void downloadPapersInBibFile() throws FileNotFoundException, ParseException, ClassNotFoundException, InstantiationException, IOException, InvalidPaperIdException {
-        BibTex bibtex = new BibTex(bibFileName, repositoryName);
+        BibTexPapersDownload bibtex = new BibTexPapersDownload(bibFileName, repositoryName);
         bibtex.setDownloadDir(downloadDir);
         bibtex.downloadAllPapers();
     }
 
     private void getComandLineParameters(String[] args) throws IllegalArgumentException {
         bibFileName = getCommandLineParam(args, 0, "");
-        downloadDir = getCommandLineParam(args, 1, "/tmp/");
+        downloadDir = getCommandLineParam(args, 1, DEFAULT_DOWNLOAD_DIR);
         repositoryName = getCommandLineParam(args, 2, repositoryName);
         if("".equals(bibFileName))
             throw new IllegalArgumentException("BibTex file name is a required command line parameter.");
     }
     
    /**
-     * Obtém um parâmetro de uma posição especificada
-     * dentro do vetor de parâmetros de linha de comando
-     * recebidos pelo main.
-     * @param args Vetor de parâmetros de linha de comando recebido pelo main.
-     * @param i Posição a ser acessada dentro do vetor de parâmetros.
-     * @param defaultValue Valor padrão a ser retornado caso o parâmetro
-     * da posição i não exista.
-     * @return Retorna o valor do parâmetro da posição i, caso exista.
-     * Caso contrário, retorna o valor do parâmetro defaultValue.
+     * Gets the value of a given command line parameter in the 
+     * command line arguments array, handling exceptions
+     * in the case where the parameter doesn't exist.
+     * 
+     * @param args Command line parameters array.
+     * @param i Index of the desired param.
+     * @param defaultValue Default value to be returned in case of the parameter
+     * does not exist.
+     * @return The parameter value of the default value (when the parameter does not exist)
      */
     private String getCommandLineParam(String args[], int i, String defaultValue){
         if(args.length > i){

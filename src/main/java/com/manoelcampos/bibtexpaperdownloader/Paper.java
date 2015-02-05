@@ -1,11 +1,7 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
 package com.manoelcampos.bibtexpaperdownloader;
 
 import com.manoelcampos.bibtexpaperdownloader.repository.PaperNotAvailableForDownloadException;
+import com.manoelcampos.bibtexpaperdownloader.repository.PaperRepository;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.util.List;
@@ -21,7 +17,7 @@ import org.jbibtex.Value;
 
 /**
  *
- * @author manoelcampos
+ * @author Manoel Campos da Silva Filho <manoelcampos at gmail dot com>
  */
 public class Paper {
     private Integer index = 0;
@@ -30,14 +26,18 @@ public class Paper {
     private Integer year;
     private String doi;
     private String localFileName;
-    private String paperWebPageUrl;
+    
     private String regexToIdentifyUnallowedPaperAccess;
     private String regexToGetPdfUrlFromPaperWebPage;
-    private final BibTeXEntry bibEntry;
-    private final BibTex bibtex;
+    private final BibTeXEntry bibTeXEntry;
+    private final BibTexPapersDownload bibtex;
+    private final PaperRepository repository;
     
-    public Paper(BibTex bibtex, BibTeXEntry bibEntry){
-        this.bibEntry = bibEntry;
+    public Paper(final PaperRepository sourceRepository, 
+            final BibTexPapersDownload bibtex, 
+            final BibTeXEntry paperBibTeXEntry){
+        this.repository = sourceRepository;
+        this.bibTeXEntry = paperBibTeXEntry;
         this.bibtex = bibtex;
     }
     
@@ -64,9 +64,9 @@ public class Paper {
      */
     private String getPaperPageHtml() throws IOException {
         try {
-            return HttpUtils.getWebPageContent(getPaperWebPageUrl());
+            return HttpUtils.getWebPageHtmlContent(getUrl());
         } catch (IOException e) {
-            throw new IOException("It wasn't possible to get the paper page content from the URL " + getPaperWebPageUrl(), e);
+            throw new IOException("It wasn't possible to get the paper page content from the URL " + getUrl(), e);
         }
     }
 
@@ -76,7 +76,7 @@ public class Paper {
      * @throws IOException 
      */
     public boolean isPaperAccessAllowed() throws IOException {
-        return StringUtils.isBlank(HttpUtils.getInformationFromWebPageContent(getPaperPageHtml(), getRegexToIdentifyUnallowedPaperAccess()));
+        return StringUtils.isBlank(HttpUtils.getInformationFromWebPageContent(getPaperPageHtml(), repository.getRegexToIdentifyUnallowedPaperAccess()));
     }
 
     /**
@@ -90,7 +90,7 @@ public class Paper {
             throw new PaperNotAvailableForDownloadException(
                 "The paper tried to download isn't available for you. Maybe you "+
                 "don't have access for the paper using the current network or account."+
-                "\nURL: " + getPaperWebPageUrl());
+                "\nURL: " + getUrl());
         }
         
         try{
@@ -99,7 +99,7 @@ public class Paper {
                 throw new PaperNotAvailableForDownloadException(); 
             return url;
         } catch(IOException e){
-            throw new IOException("It wasn't possible to access the paper page from URL " + getPaperWebPageUrl(), e);            
+            throw new IOException("It wasn't possible to access the paper page from URL " + getUrl(), e);            
         }
     }
 
@@ -110,14 +110,8 @@ public class Paper {
      * @see Paper#getPaperPdfUrl() 
      */
     private String getPaperPdfUrlInternal() throws IOException {
-        return HttpUtils.getInformationFromWebPageContent(getPaperPageHtml(), getRegexToGetPdfUrlFromPaperWebPage());
-    }
-
-    /**
-     * @return the regexToGetPdfUrlFromPaperWebPage
-     */
-    private String getRegexToGetPdfUrlFromPaperWebPage() {
-        return regexToGetPdfUrlFromPaperWebPage;
+        return HttpUtils.getInformationFromWebPageContent(
+                getPaperPageHtml(), repository.getRegexToExtractPdfUrlFromPaperWebPage());
     }
 
     /**
@@ -178,10 +172,11 @@ public class Paper {
         return sb.toString();
     }
 
-    public boolean downloadAndIfSuccessfulSetLocalFileName() throws PaperNotAvailableForDownloadException, IOException {
+    public boolean downloadAndIfSuccessfulSetLocalFileNameAndUrl() throws PaperNotAvailableForDownloadException, IOException {
         final String fileName = generatePaperPdfLocalFileName();
         if(HttpUtils.downloadFile(getPaperPdfUrl(), fileName)) {
-            this.setLocalFileName(fileName);
+            this.setLocalFileNameInBibTexEntry(fileName);
+            setFieldValue("url", getUrl());
             return true;
         }
         return false;
@@ -221,74 +216,42 @@ public class Paper {
     }
 
     /**
-     * Set a value to a bibtex key into a specific bibtex bibEntry.
+     * Set a value to a bibtex key into a specific bibtex bibTeXEntry.
      *
      * @param keyName Name of the key to be set
      * @param valueStr Value to be set on the key
      */
-    public void setFieldValue(String keyName, String valueStr) {
+    public void setFieldValue(final String keyName, final String valueStr) {
+        if(bibTeXEntry == null)
+            throw new RuntimeException("The paper is not linked to a BibTeX entry. The bibTeXEntry field is null.");
+        
         Key key = new Key(keyName);
-        Value bibValue = bibEntry.getField(key);
+        Value bibValue = bibTeXEntry.getField(key);
         if (bibValue != null) {
-            bibEntry.removeField(key);
+            bibTeXEntry.removeField(key);
         }
-        bibEntry.addField(key, new StringValue(valueStr, StringValue.Style.BRACED));
+        bibTeXEntry.addField(key, new StringValue(valueStr, StringValue.Style.BRACED));
     }
 
     /**
      * @param localFileName the localFileName to set
      */
-    public void setLocalFileName(final String localFileName) {
+    public void setLocalFileNameInBibTexEntry(final String localFileName) {
         this.localFileName = localFileName;
         setFieldValue("file", localFileName);
     }
 
     /**
-     * @return the regexToIdentifyUnallowedPaperAccess
-     */
-    public String getRegexToIdentifyUnallowedPaperAccess() {
-        return regexToIdentifyUnallowedPaperAccess;
-    }
-
-    /**
-     * @param regexToIdentifyUnallowedPaperAccess the regexToIdentifyUnallowedPaperAccess to set
-     */
-    public void setRegexToIdentifyUnallowedPaperAccess(String regexToIdentifyUnallowedPaperAccess) {
-        this.regexToIdentifyUnallowedPaperAccess = regexToIdentifyUnallowedPaperAccess;
-    }
-
-    /**
-     * @param regexToGetPdfUrlFromPaperWebPage the regexToGetPdfUrlFromPaperWebPage to set
-     */
-    public void setRegexToGetPdfUrlFromPaperWebPage(String regexToGetPdfUrlFromPaperWebPage) {
-        this.regexToGetPdfUrlFromPaperWebPage = regexToGetPdfUrlFromPaperWebPage;
-    }
-
-    /**
-     * @return the paperWebPageUrl
-     */
-    public String getPaperWebPageUrl() {
-        return paperWebPageUrl;
-    }
-
-    /**
-     * @param paperWebPageUrl the paperWebPageUrl to set
-     */
-    public void setPaperWebPageUrl(String paperWebPageUrl) {
-        this.paperWebPageUrl = paperWebPageUrl;
-    }
-
-    /**
-     * Converte para string um valor obtido de uma entrada de um item
-     * em um arquivo bibtex.
+     * 
+     * Converts to String a value get from a BibTeX entry.
      *
-     * @param value Valor de uma entrada bibtex a ser convertido para string.
-     * @return Retorna o valor da entrada como string
+     * @param value Value of a field from a BibTeX entry.
+     * @return Returns the value as string
      * @throws org.jbibtex.ParseException
      * @throws java.io.UnsupportedEncodingException
      */
     public String keyValueToStr(Value value) throws ParseException, UnsupportedEncodingException {
-        String str = value == null ? "" : value.toUserString();
+        String str = (value == null ? "" : value.toUserString());
         if (str.indexOf('\\') > -1 || str.indexOf('{') > -1) {
             LaTeXParser latexParser = new LaTeXParser();
             List<LaTeXObject> latexObjects = latexParser.parse(str);
@@ -296,6 +259,10 @@ public class Paper {
             str = latexPrinter.print(latexObjects);
         }
         return str;
+    }
+
+    public String getUrl() {
+        return String.format(repository.getTemplateOfPaperPageUrl(), id);
     }
     
 }
