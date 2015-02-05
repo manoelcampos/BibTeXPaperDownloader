@@ -1,4 +1,3 @@
-[![Build Status](https://travis-ci.org/manoelcampos/BibTeXPaperDownloader.png)](https://travis-ci.org/manoelcampos/BibTeXPaperDownloader)
 # BibTeX Paper Downloader
 Automates the download of papers from scientific repositories such as IEEE, ACM, Elsevier, Science Direct, etc.
 Different papers repositories, such as IEEE, allow us to search for papers and save a BibTeX file of the selected papers we desire.
