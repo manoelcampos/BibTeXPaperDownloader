@@ -8,26 +8,20 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.Reader;
-import java.io.UnsupportedEncodingException;
+import java.io.Writer;
 import java.util.Collection;
-import java.util.List;
-import org.apache.commons.lang.StringUtils;
 import org.jbibtex.BibTeXDatabase;
 import org.jbibtex.BibTeXEntry;
-import org.jbibtex.BibTeXFormatter;
+import org.jbibtex.BibTeXFormatterBuilder;
 import org.jbibtex.BibTeXParser;
 import org.jbibtex.CharacterFilterReader;
-import org.jbibtex.LaTeXObject;
-import org.jbibtex.LaTeXParser;
-import org.jbibtex.LaTeXPrinter;
 import org.jbibtex.ParseException;
-import org.jbibtex.Value;
 
 /**
- * Classe com funções para facilitar o parse de arquivos bibtex (*.bib)
- * @author manoelcampos
+ *
+ * @author Manoel Campos da Silva Filho <manoelcampos at gmail dot com>
  */
-public class BibTex {
+public class BibTexPapersDownload {
     private BibTeXParser parser;
     private Reader reader;
     private BibTeXDatabase database;
@@ -36,45 +30,48 @@ public class BibTex {
     private final PaperRepository repository;
         
     /**
-     * Instancia um objeto para fazer o parse de um arquivo bibtex
-     * e já tenta realizar o parse dele.
-     * @param bibFileName Nome do arquivo bibtex a ser feito o parse.
-     * @param repositoryName
+     * 
+     * @param bibFileNameContainingThePapersToDownload Name of BibTeX file to be parsed.
+     * @param classNameOfRepositoryWhereToDownloadThePapers Name of the class of the web repository
+     * where the papers in the bibtex file have to be downloaded.
+     * For instance, IEEE, ACM, Elsevier, etc.
      * @throws java.io.FileNotFoundException
      * @throws org.jbibtex.ParseException
      * @throws java.lang.ClassNotFoundException
      * @throws java.lang.InstantiationException
      * @see com.manoelcampos.bibtexpaperdownloader.repository.PaperRepositoryFactory
      */
-    public BibTex(String bibFileName, String repositoryName) throws FileNotFoundException, ParseException, ClassNotFoundException, InstantiationException {
-        this.repository = PaperRepositoryFactory.getInstance(repositoryName);
-        this.setBibFileNameAndCreateBibFileReader(bibFileName);        
-        this.createBibTexParserAndParseIt(bibFileName);
+    public BibTexPapersDownload(
+            final String bibFileNameContainingThePapersToDownload, 
+            final String classNameOfRepositoryWhereToDownloadThePapers) throws FileNotFoundException, ParseException, ClassNotFoundException, InstantiationException {
+        this.repository = 
+                PaperRepositoryFactory.getInstance(
+                        classNameOfRepositoryWhereToDownloadThePapers);
+        this.setBibFileNameAndCreateBibFileReader(bibFileNameContainingThePapersToDownload);        
+        this.createBibTexParserAndParseIt(bibFileNameContainingThePapersToDownload);
     }
 
-    private void createBibTexParserAndParseIt(String bibFileName1) throws ParseException {
+    private void createBibTexParserAndParseIt(final String bibFileName) throws ParseException {
         try (final CharacterFilterReader filterReader = new CharacterFilterReader(reader)) {
-            parser = this.createBibTexParser();
+            parser = this.getBibTexParserInstance();
             database = parser.parse(filterReader);
         } catch (Exception e) {
-            throw new ParseException("It was not possible to pase the bibtex file " + bibFileName1 + ". Maybe the file is invalid\n");        
+            e.printStackTrace(System.out);
+            throw new ParseException(
+                    "It was not possible to pase the bibtex file " + bibFileName + ". Maybe the file is invalid\n");        
         }
     }
 
-    private void setBibFileNameAndCreateBibFileReader(String bibFileName1) throws FileNotFoundException {
-        this.bibFileName = bibFileName1;
+    private void setBibFileNameAndCreateBibFileReader(final String bibFileName) throws FileNotFoundException {
+        this.bibFileName = bibFileName;
         try {
-            reader = new FileReader(bibFileName1);
+            reader = new FileReader(bibFileName);
         } catch (FileNotFoundException e) {
-            throw new FileNotFoundException("Bibtex file " + bibFileName1 + " not found.");
+            throw new FileNotFoundException("Bibtex file " + bibFileName + " not found.");
         }
     }
 
-    /**
-     * Instancia e retorna um objeto para fazer o parse de um arquivo bibtex (*.bib)
-     * @return Retorna o objeto BibTexParser criado.
-     */
-    private BibTeXParser createBibTexParser() throws ParseException {
+    private BibTeXParser getBibTexParserInstance() throws ParseException {
         return new BibTeXParser() {
             @Override
             public void checkStringResolution(org.jbibtex.Key key, org.jbibtex.BibTeXString string) {
@@ -93,18 +90,16 @@ public class BibTex {
     }      
 
     /**
-     * Processa um determinado arquivo bibtex, baixando
-     * os papers especificados nele direto da sua base de dados online.
      *
-     * @throws IOException Exceção lançada se não for possível salvar o paper baixado
-     * (devido a um caminho inválido ou falta de acesso de escrita).
-     * @throws ParseException Exceção lançcada se houver algum erro no arquivo bib
-     * que impossibilite o processamento do mesmo (se o arquivo for inválido).
-     * @throws InvalidPaperIdException Se o id de um paper a ser baixado é inválido.
-     * Por exemplo, papers do IEEE tem id's inteiros.
+     * @throws IOException 
+     * @throws ParseException 
+     * @throws InvalidPaperIdException 
      */
     public void downloadAllPapers() throws IOException, ParseException, InvalidPaperIdException {
-        System.out.println("\nParse-----------------------");
+        System.out.printf(
+                "\nDownloading %d papers from %s respository to %s\n", 
+                getEntriesCollection().size(), repository, downloadDir);
+        System.out.printf("Origin BibTeX file: %s\n\n", bibFileName);
         int i = 0;
         for (BibTeXEntry bibEntry : getEntriesCollection()) {
             i++;
@@ -112,12 +107,12 @@ public class BibTex {
             paper.setOrderInsideBibTexFile(i);
             try {
                 System.out.println(paper);
-                paper.downloadAndIfSuccessfulSetLocalFileName();
+                paper.downloadAndIfSuccessfulSetLocalFileNameAndUrl();
             } catch (PaperNotAvailableForDownloadException ex) {
                 System.out.println("Paper " + paper.getTitle() + ". " + ex.getLocalizedMessage());
             }
         }
-        this.save();
+        this.saveChangesInBibTexFile();
     }
 
     private Collection<BibTeXEntry> getEntriesCollection() {
@@ -134,12 +129,12 @@ public class BibTex {
      * @throws java.io.FileNotFoundException 
      * @throws java.io.IOException 
      */
-    public boolean save() throws FileNotFoundException, IOException{
-        try(FileWriter writer = new FileWriter(bibFileName)){
-          BibTeXFormatter bibtexFormatter = new org.jbibtex.BibTeXFormatter();
-          bibtexFormatter.format(database, writer);
+    public boolean saveChangesInBibTexFile() throws FileNotFoundException, IOException{
+        try(Writer writer = new FileWriter(bibFileName)){
+          BibTeXFormatterBuilder builder = new BibTeXFormatterBuilder();
+          database.accept(builder.buildConciseFormatter(writer));
         }
-        System.out.println("Bibtex updated to include paper's PDF paths: " + bibFileName);
+        System.out.printf("\nBibtex updated to include paper's PDF paths\n\n");
         
         return true;
     }
@@ -155,7 +150,7 @@ public class BibTex {
     /**
      * @param bibFileName the bibFileName to set
      */
-    public void setBibFileName(String bibFileName) {
+    public void setBibFileName(final String bibFileName) {
         this.bibFileName = bibFileName;
     }
 
@@ -169,7 +164,7 @@ public class BibTex {
     /**
      * @param downloadDir the downloadDir to set
      */
-    public void setDownloadDir(String downloadDir) {
+    public void setDownloadDir(final String downloadDir) {
         this.downloadDir = FileSystemUtils.insertTrailBackslach(downloadDir);
     }
 }

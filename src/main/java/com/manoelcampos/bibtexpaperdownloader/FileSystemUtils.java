@@ -1,8 +1,3 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
 package com.manoelcampos.bibtexpaperdownloader;
 
 import java.io.File;
@@ -10,7 +5,7 @@ import org.apache.commons.lang.StringUtils;
 
 /**
  *
- * @author manoelcampos
+ * @author Manoel Campos da Silva Filho <manoelcampos at gmail dot com>
  */
 public class FileSystemUtils {
 
@@ -20,7 +15,7 @@ public class FileSystemUtils {
      * @return 
      */
     public static String insertTrailBackslach(String directory) {
-        if (StringUtils.isNotBlank(directory) && directory.endsWith(File.separator)) {
+        if (StringUtils.isNotBlank(directory) && !directory.endsWith(File.separator)) {
             directory += File.separatorChar;
         }
         return directory;
