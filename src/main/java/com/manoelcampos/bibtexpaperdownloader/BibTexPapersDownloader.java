@@ -18,10 +18,11 @@ import org.jbibtex.CharacterFilterReader;
 import org.jbibtex.ParseException;
 
 /**
- *
+ * Download papers cataloged into a BibTex file from a given official paper repository on the Web
+ * (such as IEEE or Science Direct)
  * @author Manoel Campos da Silva Filho <manoelcampos at gmail dot com>
  */
-public class BibTexPapersDownload {
+public class BibTexPapersDownloader {
     private BibTeXParser parser;
     private Reader reader;
     private BibTeXDatabase database;
@@ -41,7 +42,7 @@ public class BibTexPapersDownload {
      * @throws java.lang.InstantiationException
      * @see com.manoelcampos.bibtexpaperdownloader.repository.PaperRepositoryFactory
      */
-    public BibTexPapersDownload(
+    public BibTexPapersDownloader(
             final String bibFileNameContainingThePapersToDownload, 
             final String classNameOfRepositoryWhereToDownloadThePapers) throws FileNotFoundException, ParseException, ClassNotFoundException, InstantiationException {
         this.repository = 
@@ -93,7 +94,7 @@ public class BibTexPapersDownload {
      *
      * @throws IOException 
      * @throws ParseException 
-     * @throws InvalidPaperIdException 
+     * @throws InvalidPaperIdException
      */
     public void downloadAllPapers() throws IOException, ParseException, InvalidPaperIdException {
         System.out.printf(

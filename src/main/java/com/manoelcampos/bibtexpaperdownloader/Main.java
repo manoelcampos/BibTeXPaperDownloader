@@ -15,11 +15,19 @@ import org.jbibtex.ParseException;
  */
 public class Main {
    public static final String DEFAULT_DOWNLOAD_DIR = "/tmp/";
-   public static final String DEFAULT_REPOSITORY = "IEEE";
 
    private String bibFileName;
    private String downloadDir;
-   private String repositoryName = DEFAULT_REPOSITORY;
+   public static final String supportedRepositories[] = {"IEEE", "ScienceDirect"};
+   private String repositoryName = supportedRepositories[0];
+   
+   public static String listOfSupportedRepositories(){
+       StringBuilder res = new StringBuilder(supportedRepositories.length);
+       for(String repo: supportedRepositories){
+           res.append(String.format("%s ",repo));
+       }
+       return res.toString();
+   }
     
    public static void showUsage(){
        System.out.println("Usage:");
@@ -30,7 +38,7 @@ public class Main {
             + "download the papers (default value is "+DEFAULT_DOWNLOAD_DIR+")");
        System.out.println(
             "\t\t- RepositoryName is the name of the repository that hosts the papers to "
-            + "be downloaded. Currently, only "+DEFAULT_REPOSITORY+" (the default value");
+            + "be downloaded. Available options are: "+listOfSupportedRepositories()+" (default value is "+ supportedRepositories[0] +")");
    }
    
    public Main(String args[]) throws ParseException, ClassNotFoundException, InstantiationException, IOException, FileNotFoundException, InvalidPaperIdException {
@@ -60,7 +68,7 @@ public class Main {
     }    
 
     private void downloadPapersInBibFile() throws FileNotFoundException, ParseException, ClassNotFoundException, InstantiationException, IOException, InvalidPaperIdException {
-        BibTexPapersDownload bibtex = new BibTexPapersDownload(bibFileName, repositoryName);
+        BibTexPapersDownloader bibtex = new BibTexPapersDownloader(bibFileName, repositoryName);
         bibtex.setDownloadDir(downloadDir);
         bibtex.downloadAllPapers();
     }
@@ -68,7 +76,7 @@ public class Main {
     private void getComandLineParameters(String[] args) throws IllegalArgumentException {
         bibFileName = getCommandLineParam(args, 0, "");
         downloadDir = getCommandLineParam(args, 1, DEFAULT_DOWNLOAD_DIR);
-        repositoryName = getCommandLineParam(args, 2, repositoryName);
+        repositoryName = getCommandLineParam(args, 2, repositoryName); 
         if("".equals(bibFileName))
             throw new IllegalArgumentException("BibTex file name is a required command line parameter.");
     }

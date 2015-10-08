@@ -1,6 +1,6 @@
 package com.manoelcampos.bibtexpaperdownloader.repository;
 
-import com.manoelcampos.bibtexpaperdownloader.BibTexPapersDownload;
+import com.manoelcampos.bibtexpaperdownloader.BibTexPapersDownloader;
 import com.manoelcampos.bibtexpaperdownloader.Paper;
 import org.jbibtex.BibTeXEntry;
 
@@ -9,11 +9,9 @@ import org.jbibtex.BibTeXEntry;
  * @author Manoel Campos da Silva Filho <manoelcampos at gmail dot com>
  */
 public interface PaperRepository {
-    Paper getPaperInstance(final BibTexPapersDownload bibtex, final BibTeXEntry bibEntry);
-    String getTemplateOfPaperPageUrl();
+    Paper getPaperInstance(final BibTexPapersDownloader bibtex, final BibTeXEntry bibEntry);
     @Override
     String toString();
     String getRegexToIdentifyUnallowedPaperAccess();
     String getRegexToExtractPdfUrlFromPaperWebPage();
-    
 }

@@ -26,15 +26,13 @@ public class Paper {
     private Integer year;
     private String doi;
     private String localFileName;
-    
-    private String regexToIdentifyUnallowedPaperAccess;
-    private String regexToGetPdfUrlFromPaperWebPage;
+
     private final BibTeXEntry bibTeXEntry;
-    private final BibTexPapersDownload bibtex;
+    private final BibTexPapersDownloader bibtex;
     private final PaperRepository repository;
     
     public Paper(final PaperRepository sourceRepository, 
-            final BibTexPapersDownload bibtex, 
+            final BibTexPapersDownloader bibtex, 
             final BibTeXEntry paperBibTeXEntry){
         this.repository = sourceRepository;
         this.bibTeXEntry = paperBibTeXEntry;
@@ -76,7 +74,9 @@ public class Paper {
      * @throws IOException 
      */
     public boolean isPaperAccessAllowed() throws IOException {
-        return StringUtils.isBlank(HttpUtils.getInformationFromWebPageContent(getPaperPageHtml(), repository.getRegexToIdentifyUnallowedPaperAccess()));
+        return StringUtils.isBlank(
+                HttpUtils.getInformationFromWebPageContent(getPaperPageHtml(), 
+                        repository.getRegexToIdentifyUnallowedPaperAccess()));
     }
 
     /**
@@ -168,7 +168,8 @@ public class Paper {
         sb.append(String.format("%d - PaperID: %s\n", getOrderInsideBibTexFile(), this.getId()));
         sb.append(String.format("\tTitle: %s\n", this.getTitle()));
         sb.append(String.format("\tYear:  %s", this.getYear()));
-        sb.append(String.format("\tDOI:   %s", this.getDoi()));
+        sb.append(String.format("\tDOI:   %s\n", this.getDoi()));
+        sb.append(String.format("\tURL:   %s\n", this.getUrl()));
         return sb.toString();
     }
 
@@ -186,7 +187,7 @@ public class Paper {
         String fileName;
         fileName = String.format(pdfLocalFileNameFormat(), 
                 bibtex.getDownloadDir(), getOrderInsideBibTexFile(), 
-                FileSystemUtils.validateFileName(title));
+                FileSystemUtils.validateFileName(title.trim()));
         return fileName;
     }
     
@@ -262,7 +263,7 @@ public class Paper {
     }
 
     public String getUrl() {
-        return String.format(repository.getTemplateOfPaperPageUrl(), id);
+        return bibTeXEntry.getField(BibTeXEntry.KEY_URL).toUserString();
     }
-    
+
 }
